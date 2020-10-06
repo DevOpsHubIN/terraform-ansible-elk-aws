@@ -1,0 +1,56 @@
+Browse through the files
+You should have the following files in front of you. Browse through them if you like!
+
+terraform.tfvars.example	After renaming to terraform.tfvars, it’s the main place where we set our secret stuff and override any variable in variables.tf that we so desire.
+variables.tf	Bunches of variables, you should probably look through that.
+provider.tf	Terraform config to tell it how to connect to AWS.
+servers.tf	Terraform config to find our desired AMI, deploy our instances, and captures the instance metadata for use by Ansible.
+networking.tf	Terraform config that does a bunch of AWS network setup: a VPC, internet gateway, routing table, subnet, and security groups.
+main.tf	Terraform config that launches the Ansible script and collects some of its more important output.
+ansible-install.sh	The script Terraform will modify and call to configure and run Ansible with the ECE role.
+Set variables
+We need to set a few different variables to get this working for you (vs. for me, because I already got it working for me and this is all about you).
+
+A project name which will be tagged on all the AWS resources that are created
+Your IP so that only you have ssh access to the underlying instances; setting to 0.0.0.0/0 would work too if you want to open it up to the world
+AWS access credentials to allow Terraform to provision stuff
+If you don’t have an AWS access/secret key pair, follow the AWS docs to create one.
+
+Note: variables.tf defines a public and private key file location to use for ssh-ing into the EC2 instances. If you don’t have an ssh key, I suggest you google around. DigitalOcean has a good, basic description for Linux/OSX and Windows.
+
+Steps
+Rename terraform.tfvars.example to terraform.tfvars.
+In terraform.tfvars, make the following changes:
+Set a project_name used to identify all your AWS resources.
+Set trusted_network to your IP in CIDR notation, or whichever range you prefer.
+Set aws_access_key and aws_secret_key with your info.
+Optionally override aws_region, public_key, and/or private_key.
+Two settings I'm not asking you to change are the AMI and EC2 instance type settings. There are a few reasons for this, but mainly to reduce complexity with getting started. Like last time, our plan is to deploy three i3.xlarge instances from a CentOS 7 AMI.
+
+To ensure Terraform can find the right AMI, we can provide it with various metadata. In this case, I used a name pattern, an owner ID (centos.org's), and a virtualization type. The name pattern and owner id are configurable in variables.tf, but be aware that if you select a different AMI (e.g. one with Ubuntu), you could need a different value for remote_user.
+Changing the instance type also has ramifications. i3's use locally attached NVMe drives which have a specific OS device name and configuration settings in Terraform. If you use a different instance and attach EBS volumes, you'll need to change servers.tf to map it properly. See the Terraform docs for more information.
+The settings I used for AMI and EC2 instance type can be seen in variables.tf.
+
+# The name of the AMI in the AWS Marketplace
+variable "aws_ami_name" {
+  default = "CentOS Linux 7 x86_64 HVM*"
+}
+# The owner of the AMI
+variable "aws_ami_owner" {
+  default = "679593333241" # centos.org
+}
+# User to log in to instances and perform install
+# This is dependent upon the AMI you use, so make sure these are in sync. For example, an Ubuntu AMI would use the ubuntu user
+variable "remote_user" {
+  default = "centos"
+}
+# ECE instance type
+variable "aws_instance_type
+Read More
+Run it
+We’re pretty much done. Crazy, right? It’s possible that if you just ran ahead with the defaults and didn't spend too much time investigating all the config files, you’re at this point having just installed Terraform, copied some files, and set a couple of variables. And then? Then you just run the thing!
+
+Steps
+Initialize Terraform. > terraform init
+    
+Apply the configurations > terraform apply
